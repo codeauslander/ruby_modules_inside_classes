@@ -13,7 +13,10 @@ module Adjudication
       # provider NPI (national provider ID), and run the adjudicator.
       # This method should return the processed claims
 
-      []
+      
+
+      
+
     end
   end
 end
