@@ -28,6 +28,6 @@ There are several steps to this adjudicator, some of which your coworker roughed
     4. Fully pay any preventive and diagnostic codes. Luckily, your coworker already provided a helper method on the `ClaimLineItem` model to help you figure this out.
     5. Pay any orthodontic line item at 25% of the charged rate. Again, your coworker added a helper method on `ClaimLineItem` to help you with this.
     6. Reject anything else.
-    7. Log any rejections to S           TDERR.
+    7. Log any rejections to STDERR.
 
 In order to allow the CLI (in the `bin` folder) to work properly, the `Adjudication::Engine::run` method should return processed claims.
