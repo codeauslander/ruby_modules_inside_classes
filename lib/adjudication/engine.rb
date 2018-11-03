@@ -5,17 +5,24 @@ require "adjudication/engine/claim"
 
 module Adjudication
   module Engine
+
     def self.valid_NPI(npi)
-      npi && npi.scan(/\D/).empty? && npi.length == 10
+      return true if npi && npi.length == 10 && npi.scan(/\D/).empty?
+
+      STDERR.puts "Provider's NPI is invalid #{npi || 'nil'}"
+      return false
     end
 
-    def self.match_provider(claim, normalize_provider_data)
-      normalize_provider_data.each do |provider| 
+    def self.match_provider(claim, providers)
+
+      providers.each do |provider| 
         if claim["npi"] == provider[2]
           claim["provider"] = provider.to_h
           return claim 
         end
       end
+
+      STDERR.puts "Claim does not match a Provider's NPI, Claim number - #{claim["number"]}"
       return false
     end
 
@@ -29,17 +36,20 @@ module Adjudication
       # provider NPI (national provider ID), and run the adjudicator.
       # This method should return the processed claims
 
-      normalize_provider_data = provider_data.select {
-        |provider| valid_NPI(provider[2]) ? 
-          provider :  
-          (STDERR.puts "Log bad NPI's to STDERR #{provider[2]}")
-      }
+      providers = provider_data.select { |provider| valid_NPI(provider[2]) }
       
-      processed_claims = claims_data.map {
-        |claim| Claim.new(match_provider(claim, normalize_provider_data)) if match_provider(claim, normalize_provider_data)
+      claims = claims_data.map {
+        |claim| Claim.new(match_provider(claim, providers)) if match_provider(claim, providers)
       }.compact
 
-      processed_claims
+      adjudicator = Adjudicator.new
+      claims.each { |claim| adjudicator.adjudicate(claim) }
+
+      puts
+      puts
+      puts
+      puts "Processed Claims"
+      adjudicator.processed_claims
     end
   end
 end
