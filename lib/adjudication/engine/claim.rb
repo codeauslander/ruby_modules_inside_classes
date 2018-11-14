@@ -24,6 +24,21 @@ module Adjudication
       def procedure_codes
         line_items.map(&:procedure_code)
       end
+
+      def pay
+        self.line_items.map!{|line_item|
+          if line_item.preventive_and_diagnostic?
+            line_item.pay! line_item.charged
+          elsif line_item.ortho?
+            line_item.pay! (line_item.charged * 0.25)
+          else
+            line_item.reject!
+            STDERR.puts "Line item is nether preventive or diagnostic nir orthodontic, Procedure code - #{line_item.procedure_code}"
+          end
+          line_item
+        }
+        return self
+      end
     end
   end
 end

@@ -2,17 +2,20 @@ module Adjudication
   module Providers
     require 'open-uri'
     require 'csv'
-    
-    class Fetcher
-      def provider_data
 
+    class Fetcher
+      def get_providers(url = 'http://provider-data.beam.dental/beam-network.csv')
         # TODO Import CSV data from http://provider-data.beam.dental/beam-network.csv
         # and return it.
-
-        beam_network_csv = open('http://provider-data.beam.dental/beam-network.csv')
-        csv_array_per_line = CSV.parse(beam_network_csv, :headers=>true)
-        return csv_array_per_line
-        
+        begin
+          beam_network_csv = open(url)
+          providers = CSV.parse(beam_network_csv, :headers=>true)
+          return providers
+        rescue OpenURI::HTTPError => error
+          response = error.io
+          STDERR.puts response.status 
+          STDERR.puts response.string
+        end  
       end
     end
   end

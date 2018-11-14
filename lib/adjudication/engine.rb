@@ -5,45 +5,58 @@ require "adjudication/engine/claim"
 
 module Adjudication
   module Engine
+    # VERSION = 1
 
     def self.valid_NPI(npi)
       return true if npi && npi.length == 10 && npi.scan(/\D/).empty?
-
       STDERR.puts "Provider's NPI is invalid #{npi || 'nil'}"
-      return false
     end
 
     def self.match_provider(claim, providers)
-
-      providers.each do |provider| 
-        if claim["npi"] == provider[2]
-          claim["provider"] = provider.to_h
-          return claim 
-        end
+      if provider = providers.find{ |provider| provider.npi == claim['npi'] }
+        claim["provider"] = provider
+        return Claim.new(claim)
       end
-
       STDERR.puts "Claim does not match a Provider's NPI, Claim number - #{claim["number"]}"
-      return false
     end
 
+    def self.message_duplicate_claim(claim)
+      STDERR.puts "Rejected Claim, Claim already exist, Claim number -  #{claim.number}" 
+    end
 
+    def self.unique(claims)
+      unique_claims = []
+      claims.each do |claim| 
+        add_claim = true
+        unique_claims.each do |unique_claim|   
+          if unique_claim.start_date == claim.start_date &&
+             unique_claim.patient["ssn"] == claim.patient["ssn"] &&
+             unique_claim.procedure_codes.sort == claim.procedure_codes.sort
+            add_claim = false
+            message_duplicate_claim(claim)
+          end
+        end
+        unique_claims << claim if add_claim
+      end
+      return unique_claims
+    end
 
     def self.run claims_data
       fetcher = Adjudication::Providers::Fetcher.new
-      provider_data = fetcher.provider_data
+      providers = fetcher.get_providers.map{|provider| Adjudication::Providers::Provider.new(provider)}
 
       # TODO filter resulting provider data, match it up to claims data by
       # provider NPI (national provider ID), and run the adjudicator.
       # This method should return the processed claims
 
-      providers = provider_data.select { |provider| valid_NPI(provider[2]) }
+      providers = providers.select { |provider| valid_NPI(provider.npi) }
       
       claims = claims_data.map {
-        |claim| Claim.new(match_provider(claim, providers)) if match_provider(claim, providers)
+        |claim_data|  match_provider(claim_data, providers)
       }.compact
 
       adjudicator = Adjudicator.new
-      claims.each { |claim| adjudicator.adjudicate(claim) }
+      unique(claims).each { |claim| adjudicator.adjudicate(claim.pay)} 
 
       puts
       puts
@@ -51,5 +64,6 @@ module Adjudication
       puts "Processed Claims"
       adjudicator.processed_claims
     end
+    
   end
 end
