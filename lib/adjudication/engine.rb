@@ -41,28 +41,25 @@ module Adjudication
       return unique_claims
     end
 
+    def self.normalize_providers(providers)
+      providers.select { |provider| valid_NPI(provider.npi) }
+    end
+
+    def self.match_claims_and_providers(claims_data, providers)
+      claims_data.map { |claim_data|  match_provider(claim_data, providers) }.compact
+    end
+
+    def self.adjudicate_claims(adjudicator, claims)
+      unique(claims).each { |claim| adjudicator.adjudicate(claim.pay)} 
+      adjudicator.processed_claims
+    end
+
     def self.run claims_data
       fetcher = Adjudication::Providers::Fetcher.new
       providers = fetcher.get_providers.map{|provider| Adjudication::Providers::Provider.new(provider)}
-
-      # TODO filter resulting provider data, match it up to claims data by
-      # provider NPI (national provider ID), and run the adjudicator.
-      # This method should return the processed claims
-
-      providers = providers.select { |provider| valid_NPI(provider.npi) }
-      
-      claims = claims_data.map {
-        |claim_data|  match_provider(claim_data, providers)
-      }.compact
-
-      adjudicator = Adjudicator.new
-      unique(claims).each { |claim| adjudicator.adjudicate(claim.pay)} 
-
-      puts
-      puts
-      puts
-      puts "Processed Claims"
-      adjudicator.processed_claims
+      providers = normalize_providers(providers)
+      claims = match_claims_and_providers(claims_data, providers)
+      adjudicate_claims(Adjudicator.new, claims)
     end
     
   end
